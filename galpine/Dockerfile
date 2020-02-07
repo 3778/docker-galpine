@@ -17,7 +17,8 @@ RUN echo 'slibdir=/usr/glibc-compat/lib'     >  configparams && \
     echo 'build-programs=yes'                >> configparams
 
 # Download & extract glibc sources
-ADD https://ftpmirror.gnu.org/libc/glibc-$GLIBC_VERSION.tar.gz glibc.tar.gz
+
+ADD http://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.gz glibc.tar.gz
 RUN tar zxf glibc.tar.gz && rm glibc.tar.gz
 
 # Configure pre-build options with required output target and flags
@@ -43,6 +44,46 @@ RUN tar --dereference --hard-dereference \
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 FROM alpine:3.11 AS apk-builder
 
-COPY --from=glibc-builder /glibc-bin.tar.gz /glibc.tar.gz
-# TODO: build APK as of https://github.com/sgerrand/alpine-pkg-glibc
+RUN apk add alpine-sdk
+
+# Cannot use abuild tool as root user
+RUN adduser -G abuild -g "Alpine Package Builder" -s /bin/ash -D builder
+RUN echo "builder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+WORKDIR /apk
+RUN chown builder:abuild /apk
+USER builder
+
+# Copy apk sources
+COPY apk/* /apk/
+COPY --from=glibc-builder /glibc-bin.tar.gz glibc.tar.gz
+
+# Generate apk keys & build package at /home/builder/packages/x86_64
+RUN abuild-keygen -ain
+RUN abuild -r
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+FROM alpine:3.11
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+
+# Retrieve public key from abuild-keygen
+COPY --from=apk-builder /home/builder/.abuild/*.pub /etc/apk/keys/
+# Copy base + bin + i18n apks
+COPY --from=apk-builder /home/builder/packages/x86_64/glibc-2.30-r0.apk /opt/glibc-2.30-r0.apk
+COPY --from=apk-builder /home/builder/packages/x86_64/glibc-bin-2.30-r0.apk /opt/glibc-bin-2.30-r0.apk
+COPY --from=apk-builder /home/builder/packages/x86_64/glibc-i18n-2.30-r0.apk /opt/glibc-i18n-2.30-r0.apk
+
+# Install APKs
+RUN apk add --no-cache /opt/glibc-2.30-r0.apk
+RUN apk add --no-cache /opt/glibc-bin-2.30-r0.apk
+RUN apk add --no-cache /opt/glibc-i18n-2.30-r0.apk
+
+# Generate locales
+# ERROR: No definition for LC_PAPER category found
+RUN /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 "$LANG"
+RUN echo "export LANG=$LANG" > /etc/profile.d/locale.sh
+
+# Clear unnecesary files
+RUN apk del glibc-i18n
+RUN rm /opt/*.apk
 
