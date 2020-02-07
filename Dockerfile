@@ -1,5 +1,5 @@
 FROM ubuntu:19.10 AS builder-glibc
-WORKDIR /glibc-build
+WORKDIR /usr/src/glibc
 
 ARG GLIBC_SIGKEY=CCECECECE
 # TODO latest glibc version is 2.31 @ 2020-02-01
@@ -25,14 +25,16 @@ ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz.sig glibc.sig
 RUN tar --extract --xz --strip-components=1 --file=glibc.tar.xz && rm glibc.tar.xz
 
 # BUILD FINAL ARTIFACT @ /glibc-bin.tar.xz
+WORKDIR /glibc-build
 RUN mkdir -p /usr/glibc-compat/lib
-RUN ./configure \
+RUN /usr/src/glibc/configure \
     --prefix=/usr/glibc-compat \
     --libdir=/usr/glibc-compat/lib \
     --libexecdir=/usr/glibc-compat/lib \
     --enable-multi-arch \
     --enable-stack-protector=strong \
     --enable-cet
+# TODO try building with `make PARALLELMFLAGS="-j $(ncores)"`
 RUN make && make install
 RUN tar --create --xz --dereference --hard-dereference --file=/glibc-bin.tar.xz /usr/glibc-compat/*
 
@@ -44,8 +46,8 @@ USER builder:abuild
 WORKDIR /home/builder
 
 # CONFIGURE APK BUILD ENVIRONMENT
-COPY APKBUILD
-COPY --from=builder-glibc /glibc-bin.tar.xz
+COPY APKBUILD .
+COPY --from=builder-glibc /glibc-bin.tar.xz .
 # TODO what is this for? do we need this?
 RUN echo hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4 > nsswitch.conf
 # TODO check what we are changing from default ld.so.conf and if we really need this
