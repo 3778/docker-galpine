@@ -41,7 +41,7 @@ RUN tar --create --xz --dereference --hard-dereference --file=/glibc-bin.tar.xz 
 
 FROM alpine:3.11 AS builder-apk
 RUN apk add alpine-sdk
-RUN adduser -D builder
+RUN adduser -D builder -G abuild
 USER builder:abuild
 WORKDIR /home/builder
 
