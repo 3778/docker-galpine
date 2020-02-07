@@ -1,47 +1,42 @@
 FROM ubuntu:19.10 AS builder-glibc
-
-# TODO: latest glibc version is 2.31 @ 2020-02-01
-ARG GLIBC_VERSION=2.30
-ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
-
-RUN apt update && apt install -y \
-    bison build-essential gawk gettext openssl python3 texinfo
-
 WORKDIR /glibc-build
 
-# Write configparams file
+ARG GLIBC_SIGKEY=CCECECECE
+# TODO latest glibc version is 2.31 @ 2020-02-01
+ARG GLIBC_VERSION=2.30
+ARG LANG=C.UTF-8
+ARG LC_ALL=C.UTF-8
+
+# TODO trim this up? AND ADD gpg TO THE LIST (if its not in by default already)
+RUN apt update && apt install -y --no-install-recommends --no-upgrade \
+    bison build-essential gawk gettext openssl python3 texinfo
+
+# TODO are the parameters in `glibc-*/configure` enough? is this block needed?
 RUN echo 'slibdir=/usr/glibc-compat/lib'     >  configparams && \
     echo 'rtlddir=/usr/glibc-compat/lib'     >> configparams && \
     echo 'sbindir=/usr/glibc-compat/bin'     >> configparams && \
     echo 'rootsbindir=/usr/glibc-compat/bin' >> configparams && \
     echo 'build-programs=yes'                >> configparams
 
-# Download & extract glibc sources
+ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz     glibc.tar.xz
+ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz.sig glibc.sig
+# TODO does this gpg thing work?
+#RUN gpg --recv-key=$GLIBC_SIGKEY && gpg glibc.sig && gpg --verify=glibc.sig glibc.tar.xz
+RUN tar --extract --xz --strip-components=1 --file=glibc.tar.xz && rm glibc.tar.xz
 
-ADD http://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.gz glibc.tar.gz
-RUN tar zxf glibc.tar.gz && rm glibc.tar.gz
-
-# Configure pre-build options with required output target and flags
+# BUILD FINAL ARTIFACT @ /glibc-bin.tar.xz
 RUN mkdir -p /usr/glibc-compat/lib
-RUN glibc-$GLIBC_VERSION/configure \
+RUN ./configure \
     --prefix=/usr/glibc-compat \
     --libdir=/usr/glibc-compat/lib \
     --libexecdir=/usr/glibc-compat/lib \
     --enable-multi-arch \
     --enable-stack-protector=strong \
     --enable-cet
+RUN make && make install
+RUN tar --create --xz --dereference --hard-dereference --file=/glibc-bin.tar.xz /usr/glibc-compat/*
 
-# Build glibc
-RUN make
 
-# Install glibc at /usr/glibc-compat
-RUN make install
-
-# Create final compressed archive
-RUN tar --dereference --hard-dereference \
-    -zcf /glibc-bin.tar.gz /usr/glibc-compat
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 FROM alpine:3.11 AS builder-apk
 
 RUN apk add alpine-sdk
@@ -55,7 +50,7 @@ USER builder
 
 # APK souce files
 COPY APKBUILD APKBUILD
-COPY --from=builder-glibc /glibc-bin.tar.gz glibc.tar.gz
+COPY --from=builder-glibc /glibc-bin.tar.xz
 RUN echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > nsswitch.conf
 # libc default configuration
 RUN echo '/usr/local/lib'        >  ld.so.conf && \
