@@ -42,7 +42,7 @@ FROM alpine:3.11 AS builder-apk
 RUN apk add alpine-sdk
 RUN adduser -D builder -G abuild
 RUN echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-USER builder:abuild
+USER builder
 WORKDIR /home/builder
 
 # CONFIGURE APK BUILD ENVIRONMENT
@@ -67,10 +67,10 @@ RUN abuild-keygen -ain && abuild -r
 
 FROM alpine:3.11
 # TODO check if we need all `*.apk` files or just `glibc-bin-*.apk` or naked `glibc.apk`
-COPY --from=builder-apk /home/builder/packages/x86_64/glibc-*.apk      /opt/glibc.apk
-COPY --from=builder-apk /home/builder/packages/x86_64/glibc-bin-*.apk  /opt/glibc-bin.apk
-COPY --from=builder-apk /home/builder/packages/x86_64/glibc-i18n-*.apk /opt/glibc-i18n.apk
-RUN apk add --allow-untrusted --no-cache /opt/glibc-*.apk
+COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-2.30-r0.apk /opt/glibc.apk
+COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-bin-*.apk   /opt/glibc-bin.apk
+COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-i18n-*.apk  /opt/glibc-i18n.apk
+RUN apk add --allow-untrusted --no-cache /opt/glibc.apk /opt/glibc-bin.apk /opt/glibc-i18n.apk
 
 # GENERATE LOCALES
 ARG LANG=C.UTF-8
