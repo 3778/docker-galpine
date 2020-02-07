@@ -12,11 +12,11 @@ RUN apt update && apt install -y --no-install-recommends --no-upgrade \
     bison build-essential gawk gettext openssl python3 texinfo
 
 # TODO are the parameters in `glibc-*/configure` enough? is this block needed?
-RUN echo 'slibdir=/usr/glibc-compat/lib'     >  configparams && \
-    echo 'rtlddir=/usr/glibc-compat/lib'     >> configparams && \
-    echo 'sbindir=/usr/glibc-compat/bin'     >> configparams && \
-    echo 'rootsbindir=/usr/glibc-compat/bin' >> configparams && \
-    echo 'build-programs=yes'                >> configparams
+RUN echo slibdir=/usr/glibc-compat/lib     >  configparams && \
+    echo rtlddir=/usr/glibc-compat/lib     >> configparams && \
+    echo sbindir=/usr/glibc-compat/bin     >> configparams && \
+    echo rootsbindir=/usr/glibc-compat/bin >> configparams && \
+    echo build-programs=yes                >> configparams
 
 ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz     glibc.tar.xz
 ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz.sig glibc.sig
@@ -38,52 +38,45 @@ RUN tar --create --xz --dereference --hard-dereference --file=/glibc-bin.tar.xz 
 
 
 FROM alpine:3.11 AS builder-apk
-
 RUN apk add alpine-sdk
+RUN adduser -D builder
+USER builder:abuild
+WORKDIR /home/builder
 
-# Cannot use abuild tool as root user
-RUN adduser -G abuild -g "Alpine Package Builder" -s /bin/ash -D builder
-RUN echo "builder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-WORKDIR /apk
-RUN chown builder:abuild /apk
-USER builder
-
-# APK souce files
-COPY APKBUILD APKBUILD
+# CONFIGURE APK BUILD ENVIRONMENT
+COPY APKBUILD
 COPY --from=builder-glibc /glibc-bin.tar.xz
-RUN echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > nsswitch.conf
-# libc default configuration
-RUN echo '/usr/local/lib'        >  ld.so.conf && \
-    echo '/usr/glibc-compat/lib' >> ld.so.conf && \
-    echo '/usr/lib'              >> ld.so.conf && \
-    echo '/lib'                  >> ld.so.conf
-RUN echo '#!/bin/sh' > glibc-bin.trigger && \
-    echo '/usr/glibc-compat/sbin/ldconfig' >> glibc-bin.trigger && \
+# TODO what is this for? do we need this?
+RUN echo hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4 > nsswitch.conf
+# TODO check what we are changing from default ld.so.conf and if we really need this
+RUN echo /usr/local/lib        >  ld.so.conf && \
+    echo /usr/glibc-compat/lib >> ld.so.conf && \
+    echo /usr/lib              >> ld.so.conf && \
+    echo /lib                  >> ld.so.conf
+# TODO what is this for? do we need this?
+RUN echo '#!/bin/sh'                      >  glibc-bin.trigger && \
+    echo  /usr/glibc-compat/sbin/ldconfig >> glibc-bin.trigger && \
     chmod 775 glibc-bin.trigger
 RUN abuild checksum
 
-# Generate apk keys & build package at $HOME/packages/x86_64
-RUN abuild-keygen -ain
-RUN abuild -r
+# BUILD PACKAGE (NOTE signed with build-time ephemeral key)
+RUN abuild-keygen -ain && abuild -r
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
 FROM alpine:3.11
+# TODO check if we need all `*.apk` files or just `glibc-bin-*.apk` or naked `glibc.apk`
+COPY --from=builder-apk /home/builder/packages/x86_64/glibc-*.apk      /opt/glibc.apk
+COPY --from=builder-apk /home/builder/packages/x86_64/glibc-bin-*.apk  /opt/glibc-bin.apk
+COPY --from=builder-apk /home/builder/packages/x86_64/glibc-i18n-*.apk /opt/glibc-i18n.apk
+RUN apk add --allow-untrusted --no-cache /opt/glibc-*.apk
 
-# Retrieve public key from abuild-keygen
-COPY --from=builder-apk /home/builder/.abuild/*.pub /etc/apk/keys/
+# GENERATE LOCALES
+ARG LANG=C.UTF-8
+ARG LC_ALL=C.UTF-8
+ENV LANG=$LANG LC_ALL=$LC_ALL
+# TODO can we parametrize UTF-8 with build ARG? can we run `localedef` in a previous build step?
+RUN /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 $LC_ALL || true
 
-# Install APK
-COPY --from=builder-apk /home/builder/packages/x86_64/glibc-2.30-r0.apk /opt/glibc-2.30-r0.apk
-RUN apk add --no-cache /opt/glibc-2.30-r0.apk
+# GARBAGE COLLECTOR
+RUN apk del glibc-i18n && rm /opt/*.apk
 
-# Generate locales
-COPY --from=builder-apk /home/builder/packages/x86_64/glibc-bin-2.30-r0.apk /opt/glibc-bin-2.30-r0.apk
-COPY --from=builder-apk /home/builder/packages/x86_64/glibc-i18n-2.30-r0.apk /opt/glibc-i18n-2.30-r0.apk
-RUN apk add --no-cache /opt/glibc-bin-2.30-r0.apk
-RUN apk add --no-cache /opt/glibc-i18n-2.30-r0.apk
-RUN /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 "C.UTF-8" || true
-RUN echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh
-
-# Clear unnecesary files
-RUN apk del glibc-i18n
-RUN rm /opt/*.apk
