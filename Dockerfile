@@ -34,8 +34,7 @@ RUN /usr/src/glibc/configure \
     --enable-multi-arch \
     --enable-stack-protector=strong \
     --enable-cet
-# TODO try building with `make PARALLELMFLAGS="-j $(ncores)"`
-RUN make && make install
+RUN make PARALLELMFLAGS="-j $(nproc)" && make install
 RUN tar --create --xz --dereference --hard-dereference --file=/glibc-bin.tar.xz /usr/glibc/*
 
 
