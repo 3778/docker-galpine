@@ -62,14 +62,17 @@ RUN echo '#!/bin/sh'               >  glibc-bin.trigger && \
 RUN abuild checksum
 
 # BUILD PACKAGE (NOTE signed with build-time ephemeral key)
+ARG GLIBC_VERSION=2.30
 RUN abuild-keygen -ain && abuild -r
 
 
 FROM alpine:3.11
+ARG GLIBC_VERSION=2.30
 # TODO check if we need all `*.apk` files or just `glibc-bin-*.apk` or naked `glibc.apk`
-COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-2.30-r0.apk /opt/glibc.apk
-COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-bin-*.apk   /opt/glibc-bin.apk
-COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-i18n-*.apk  /opt/glibc-i18n.apk
+# TODO apk uses `home/x86_64` as repository index, we should remove the `home` part
+COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-$GLIBC_VERSION-r0.apk /opt/glibc.apk
+COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-bin-*.apk             /opt/glibc-bin.apk
+COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-i18n-*.apk            /opt/glibc-i18n.apk
 RUN apk add --allow-untrusted --no-cache /opt/glibc.apk /opt/glibc-bin.apk /opt/glibc-i18n.apk
 
 # GENERATE LOCALES

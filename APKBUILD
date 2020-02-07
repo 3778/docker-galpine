@@ -1,5 +1,5 @@
 pkgname="glibc"
-pkgver="2.30"  # TODO parametrize with Dockerfile arg
+pkgver="$GLIBC_VERSION"
 pkgrel="0"
 pkgdesc="GNU C Library compatibility layer for Alpine Linux"
 url="https://github.com/3778/docker-galpine"
@@ -22,6 +22,7 @@ package() {
     rm -rf $pkgdir/usr/glibc/lib/audit
     rm -rf $pkgdir/usr/glibc/share
     rm -rf $pkgdir/usr/glibc/var
+    # FIXME these symbolic links error on trigger in galpine container
     ln -s /usr/glibc/lib/ld-linux-x86-64.so.2 $pkgdir/lib/ld-linux-x86-64.so.2
     ln -s /usr/glibc/lib/ld-linux-x86-64.so.2 $pkgdir/lib64/ld-linux-x86-64.so.2
     ln -s /usr/glibc/lib/ld-linux-x86-64.so.2 $pkgdir/usr/glibc/lib64/ld-linux-x86-64.so.2
