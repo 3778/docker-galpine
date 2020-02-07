@@ -9,7 +9,7 @@ RUN apt update && apt install -y \
 
 WORKDIR /glibc-build
 
-# Write configparams file - TODO: I think this is not being used at all
+# Write configparams file
 RUN echo 'slibdir=/usr/glibc-compat/lib'     >  configparams && \
     echo 'rtlddir=/usr/glibc-compat/lib'     >> configparams && \
     echo 'sbindir=/usr/glibc-compat/bin'     >> configparams && \
@@ -53,37 +53,42 @@ WORKDIR /apk
 RUN chown builder:abuild /apk
 USER builder
 
-# Copy apk sources
-COPY apk/* /apk/
+# APK souce files
+COPY APKBUILD APKBUILD
 COPY --from=glibc-builder /glibc-bin.tar.gz glibc.tar.gz
+RUN echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > nsswitch.conf
+# libc default configuration
+RUN echo '/usr/local/lib'        >  ld.so.conf && \
+    echo '/usr/glibc-compat/lib' >> ld.so.conf && \
+    echo '/usr/lib'              >> ld.so.conf && \
+    echo '/lib'                  >> ld.so.conf
+RUN echo '#!/bin/sh' > glibc-bin.trigger && \
+    echo '/usr/glibc-compat/sbin/ldconfig' >> glibc-bin.trigger && \
+    chmod 775 glibc-bin.trigger
+RUN abuild checksum
 
-# Generate apk keys & build package at /home/builder/packages/x86_64
+# Generate apk keys & build package at $HOME/packages/x86_64
 RUN abuild-keygen -ain
 RUN abuild -r
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 FROM alpine:3.11
 
-ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
-
 # Retrieve public key from abuild-keygen
 COPY --from=apk-builder /home/builder/.abuild/*.pub /etc/apk/keys/
-# Copy base + bin + i18n apks
-COPY --from=apk-builder /home/builder/packages/x86_64/glibc-2.30-r0.apk /opt/glibc-2.30-r0.apk
-COPY --from=apk-builder /home/builder/packages/x86_64/glibc-bin-2.30-r0.apk /opt/glibc-bin-2.30-r0.apk
-COPY --from=apk-builder /home/builder/packages/x86_64/glibc-i18n-2.30-r0.apk /opt/glibc-i18n-2.30-r0.apk
 
-# Install APKs
+# Install APK
+COPY --from=apk-builder /home/builder/packages/x86_64/glibc-2.30-r0.apk /opt/glibc-2.30-r0.apk
 RUN apk add --no-cache /opt/glibc-2.30-r0.apk
-RUN apk add --no-cache /opt/glibc-bin-2.30-r0.apk
-RUN apk add --no-cache /opt/glibc-i18n-2.30-r0.apk
 
 # Generate locales
-# ERROR: No definition for LC_PAPER category found
-RUN /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 "$LANG"
-RUN echo "export LANG=$LANG" > /etc/profile.d/locale.sh
+COPY --from=apk-builder /home/builder/packages/x86_64/glibc-bin-2.30-r0.apk /opt/glibc-bin-2.30-r0.apk
+COPY --from=apk-builder /home/builder/packages/x86_64/glibc-i18n-2.30-r0.apk /opt/glibc-i18n-2.30-r0.apk
+RUN apk add --no-cache /opt/glibc-bin-2.30-r0.apk
+RUN apk add --no-cache /opt/glibc-i18n-2.30-r0.apk
+RUN /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 "C.UTF-8" || true
+RUN echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh
 
 # Clear unnecesary files
 RUN apk del glibc-i18n
 RUN rm /opt/*.apk
-

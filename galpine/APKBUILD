@@ -1,12 +1,14 @@
+# Contributor: Octávio Richter <octavio.richter@3778.care>
+# Maintainer: 3778 Platform <platform@3778.care>
 pkgname="glibc"
 pkgver="2.30"
 pkgrel="0"
 pkgdesc="GNU C Library compatibility layer"
-arch="x86_64"
 url="https://github.com/3778/docker-galpine"
+arch="x86_64"
 license="LGPL"
-source="glibc.tar.gz nsswitch.conf ld.so.conf"
 subpackages="$pkgname-bin $pkgname-dev $pkgname-i18n"
+source="glibc.tar.gz nsswitch.conf ld.so.conf"
 triggers="$pkgname-bin.trigger=/lib:/usr/lib:/usr/glibc-compat/lib"
 
 package() {
@@ -41,6 +43,3 @@ i18n() {
   mkdir -p "$subpkgdir"/usr/glibc-compat
   cp -a "$srcdir"/usr/glibc-compat/share "$subpkgdir"/usr/glibc-compat
 }
-sha512sums="577b2cbd754e5448be3a0496d99f5367c88e017a2eb23cb3ea81aeacbd53aa4fba8ea22c0e58161f1bcc0d202418aca6d442b7f08c8fe68d470d9eba8c7ba61e  glibc.tar.gz
-478bdd9f7da9e6453cca91ce0bd20eec031e7424e967696eb3947e3f21aa86067aaf614784b89a117279d8a939174498210eaaa2f277d3942d1ca7b4809d4b7e  nsswitch.conf
-2912f254f8eceed1f384a1035ad0f42f5506c609ec08c361e2c0093506724a6114732db1c67171c8561f25893c0dd5c0c1d62e8a726712216d9b45973585c9f7  ld.so.conf"
