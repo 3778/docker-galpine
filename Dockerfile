@@ -1,4 +1,4 @@
-FROM ubuntu:19.10 AS glibc-builder
+FROM ubuntu:19.10 AS builder-glibc
 
 # TODO: latest glibc version is 2.31 @ 2020-02-01
 ARG GLIBC_VERSION=2.30
@@ -42,7 +42,7 @@ RUN tar --dereference --hard-dereference \
     -zcf /glibc-bin.tar.gz /usr/glibc-compat
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-FROM alpine:3.11 AS apk-builder
+FROM alpine:3.11 AS builder-apk
 
 RUN apk add alpine-sdk
 
@@ -55,7 +55,7 @@ USER builder
 
 # APK souce files
 COPY APKBUILD APKBUILD
-COPY --from=glibc-builder /glibc-bin.tar.gz glibc.tar.gz
+COPY --from=builder-glibc /glibc-bin.tar.gz glibc.tar.gz
 RUN echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > nsswitch.conf
 # libc default configuration
 RUN echo '/usr/local/lib'        >  ld.so.conf && \
@@ -75,15 +75,15 @@ RUN abuild -r
 FROM alpine:3.11
 
 # Retrieve public key from abuild-keygen
-COPY --from=apk-builder /home/builder/.abuild/*.pub /etc/apk/keys/
+COPY --from=builder-apk /home/builder/.abuild/*.pub /etc/apk/keys/
 
 # Install APK
-COPY --from=apk-builder /home/builder/packages/x86_64/glibc-2.30-r0.apk /opt/glibc-2.30-r0.apk
+COPY --from=builder-apk /home/builder/packages/x86_64/glibc-2.30-r0.apk /opt/glibc-2.30-r0.apk
 RUN apk add --no-cache /opt/glibc-2.30-r0.apk
 
 # Generate locales
-COPY --from=apk-builder /home/builder/packages/x86_64/glibc-bin-2.30-r0.apk /opt/glibc-bin-2.30-r0.apk
-COPY --from=apk-builder /home/builder/packages/x86_64/glibc-i18n-2.30-r0.apk /opt/glibc-i18n-2.30-r0.apk
+COPY --from=builder-apk /home/builder/packages/x86_64/glibc-bin-2.30-r0.apk /opt/glibc-bin-2.30-r0.apk
+COPY --from=builder-apk /home/builder/packages/x86_64/glibc-i18n-2.30-r0.apk /opt/glibc-i18n-2.30-r0.apk
 RUN apk add --no-cache /opt/glibc-bin-2.30-r0.apk
 RUN apk add --no-cache /opt/glibc-i18n-2.30-r0.apk
 RUN /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 "C.UTF-8" || true
