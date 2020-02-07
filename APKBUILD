@@ -7,39 +7,39 @@ arch="x86_64"
 license="LGPL"
 subpackages="$pkgname-dev $pkgname-bin $pkgname-i18n"
 source="glibc-bin.tar.xz nsswitch.conf ld.so.conf"
-triggers="$pkgname-bin.trigger=/lib:/usr/lib:/usr/glibc-compat/lib"
+triggers="$pkgname-bin.trigger=/lib:/usr/lib:/usr/glibc/lib"
 
 # TODO these escaping quotes are not necessary unless abuild wants them
 package() {  # TODO can this be named `dev` to match the other build recipes
-    mkdir -p "$pkgdir/lib" "$pkgdir/lib64" "$pkgdir/usr/glibc-compat/lib/locale" "$pkgdir"/usr/glibc-compat/lib64 "$pkgdir"/etc
+    mkdir -p "$pkgdir/lib" "$pkgdir/lib64" "$pkgdir/usr/glibc/lib/locale" "$pkgdir"/usr/glibc/lib64 "$pkgdir"/etc
     cp -a "$srcdir"/usr "$pkgdir"
-    cp "$srcdir"/ld.so.conf "$pkgdir"/usr/glibc-compat/etc/ld.so.conf
+    cp "$srcdir"/ld.so.conf "$pkgdir"/usr/glibc/etc/ld.so.conf
     cp "$srcdir"/nsswitch.conf "$pkgdir"/etc/nsswitch.conf
-    rm "$pkgdir"/usr/glibc-compat/etc/rpc
-    rm -rf "$pkgdir"/usr/glibc-compat/bin
-    rm -rf "$pkgdir"/usr/glibc-compat/sbin
-    rm -rf "$pkgdir"/usr/glibc-compat/lib/gconv
-    rm -rf "$pkgdir"/usr/glibc-compat/lib/getconf
-    rm -rf "$pkgdir"/usr/glibc-compat/lib/audit
-    rm -rf "$pkgdir"/usr/glibc-compat/share
-    rm -rf "$pkgdir"/usr/glibc-compat/var
-    ln -s /usr/glibc-compat/lib/ld-linux-x86-64.so.2 ${pkgdir}/lib/ld-linux-x86-64.so.2
-    ln -s /usr/glibc-compat/lib/ld-linux-x86-64.so.2 ${pkgdir}/lib64/ld-linux-x86-64.so.2
-    ln -s /usr/glibc-compat/lib/ld-linux-x86-64.so.2 ${pkgdir}/usr/glibc-compat/lib64/ld-linux-x86-64.so.2
-    ln -s /usr/glibc-compat/etc/ld.so.cache ${pkgdir}/etc/ld.so.cache
+    rm "$pkgdir"/usr/glibc/etc/rpc
+    rm -rf "$pkgdir"/usr/glibc/bin
+    rm -rf "$pkgdir"/usr/glibc/sbin
+    rm -rf "$pkgdir"/usr/glibc/lib/gconv
+    rm -rf "$pkgdir"/usr/glibc/lib/getconf
+    rm -rf "$pkgdir"/usr/glibc/lib/audit
+    rm -rf "$pkgdir"/usr/glibc/share
+    rm -rf "$pkgdir"/usr/glibc/var
+    ln -s /usr/glibc/lib/ld-linux-x86-64.so.2 ${pkgdir}/lib/ld-linux-x86-64.so.2
+    ln -s /usr/glibc/lib/ld-linux-x86-64.so.2 ${pkgdir}/lib64/ld-linux-x86-64.so.2
+    ln -s /usr/glibc/lib/ld-linux-x86-64.so.2 ${pkgdir}/usr/glibc/lib64/ld-linux-x86-64.so.2
+    ln -s /usr/glibc/etc/ld.so.cache ${pkgdir}/etc/ld.so.cache
 }
 
 bin() {
     depends="$pkgname libgcc"
-    mkdir -p "$subpkgdir"/usr/glibc-compat
-    cp -a "$srcdir"/usr/glibc-compat/bin "$subpkgdir"/usr/glibc-compat
-    cp -a "$srcdir"/usr/glibc-compat/sbin "$subpkgdir"/usr/glibc-compat
+    mkdir -p "$subpkgdir"/usr/glibc
+    cp -a "$srcdir"/usr/glibc/bin "$subpkgdir"/usr/glibc
+    cp -a "$srcdir"/usr/glibc/sbin "$subpkgdir"/usr/glibc
 }
 
 i18n() {
     depends="$pkgname-bin"
     arch="noarch"
-    mkdir -p "$subpkgdir"/usr/glibc-compat
-    cp -a "$srcdir"/usr/glibc-compat/share "$subpkgdir"/usr/glibc-compat
+    mkdir -p "$subpkgdir"/usr/glibc
+    cp -a "$srcdir"/usr/glibc/share "$subpkgdir"/usr/glibc
 }
 
