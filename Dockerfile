@@ -25,7 +25,7 @@ ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz.sig glibc.sig
 RUN tar --extract --xz --strip-components=1 --file=glibc.tar.xz && rm glibc.tar.xz
 
 # BUILD FINAL ARTIFACT @ /glibc-bin.tar.xz
-WORKDIR /root/
+WORKDIR /root
 RUN mkdir -p /usr/glibc/lib
 RUN /usr/src/glibc/configure \
     --prefix=/usr/glibc \

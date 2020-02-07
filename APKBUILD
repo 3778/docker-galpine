@@ -10,7 +10,7 @@ source="glibc-bin.tar.xz nsswitch.conf ld.so.conf"
 triggers="$pkgname-bin.trigger=/lib:/usr/lib:/usr/glibc/lib"
 
 # TODO these escaping quotes are not necessary unless abuild wants them
-package() {  # TODO can this be named `dev` to match the other build recipes
+package() {
     mkdir -p "$pkgdir/lib" "$pkgdir/lib64" "$pkgdir/usr/glibc/lib/locale" "$pkgdir"/usr/glibc/lib64 "$pkgdir"/etc
     cp -a "$srcdir"/usr "$pkgdir"
     cp "$srcdir"/ld.so.conf "$pkgdir"/usr/glibc/etc/ld.so.conf
