@@ -19,22 +19,14 @@
 FROM ubuntu:19.10 AS builder-glibc
 WORKDIR /usr/src/glibc
 
-ARG GLIBC_SIGKEY=CCECECECE
-# TODO latest glibc version is 2.31 @ 2020-02-01
-ARG GLIBC_VERSION=2.30
+# ARG GLIBC_SIGKEY=CCECECECE
+ARG GLIBC_VERSION=2.31
 ARG LANG=C.UTF-8
 ARG LC_ALL=C.UTF-8
 
 # TODO trim this up? AND ADD gpg TO THE LIST (if its not in by default already)
 RUN apt update && apt install -y --no-install-recommends --no-upgrade \
     bison build-essential gawk gettext openssl python3 texinfo
-
-# TODO are the parameters in `glibc-*/configure` enough? is this block needed?
-RUN echo slibdir=/usr/glibc/lib     >  configparams && \
-    echo rtlddir=/usr/glibc/lib     >> configparams && \
-    echo sbindir=/usr/glibc/bin     >> configparams && \
-    echo rootsbindir=/usr/glibc/bin >> configparams && \
-    echo build-programs=yes         >> configparams
 
 ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz     glibc.tar.xz
 ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz.sig glibc.sig
@@ -66,8 +58,6 @@ WORKDIR /home/builder
 # CONFIGURE APK BUILD ENVIRONMENT
 COPY APKBUILD .
 COPY --from=builder-glibc /glibc-bin.tar.xz .
-# TODO what is this for? do we need this?
-RUN echo hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4 > nsswitch.conf
 # TODO check what we are changing from default ld.so.conf and if we really need this
 RUN echo /usr/local/lib >  ld.so.conf && \
     echo /usr/glibc/lib >> ld.so.conf && \
@@ -80,12 +70,12 @@ RUN echo '#!/bin/sh'               >  glibc-bin.trigger && \
 RUN abuild checksum
 
 # BUILD PACKAGE (NOTE signed with build-time ephemeral key)
-ARG GLIBC_VERSION=2.30
+ARG GLIBC_VERSION=2.31
 RUN abuild-keygen -ain && abuild -r
 
 
 FROM alpine:3.11
-ARG GLIBC_VERSION=2.30
+ARG GLIBC_VERSION=2.31
 # TODO check if we need all `*.apk` files or just `glibc-bin-*.apk` or naked `glibc.apk`
 # TODO apk uses `home/x86_64` as repository index, we should remove the `home` part
 COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-$GLIBC_VERSION-r0.apk /opt/glibc.apk
@@ -102,4 +92,3 @@ RUN /usr/glibc/bin/localedef --force --inputfile POSIX --charmap UTF-8 $LC_ALL |
 
 # GARBAGE COLLECTOR
 RUN apk del glibc-i18n && rm /opt/*.apk
-
