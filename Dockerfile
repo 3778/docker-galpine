@@ -19,19 +19,19 @@
 FROM ubuntu:19.10 AS builder-glibc
 WORKDIR /usr/src/glibc
 
-# ARG GLIBC_SIGKEY=CCECECECE
+ARG GLIBC_SIGKEY=BC7C7372637EC10C57D7AA6579C43DFBF1CF2187
 ARG GLIBC_VERSION=2.31
 ARG LANG=C.UTF-8
 ARG LC_ALL=C.UTF-8
 
 # TODO trim this up? AND ADD gpg TO THE LIST (if its not in by default already)
 RUN apt update && apt install -y --no-install-recommends --no-upgrade \
-    bison build-essential gawk gettext openssl python3 texinfo
+    bison build-essential gawk gettext openssl python3 texinfo gpg dirmnrg
 
 ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz     glibc.tar.xz
 ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz.sig glibc.sig
-# TODO does this gpg thing work?
-#RUN gpg --recv-key=$GLIBC_SIGKEY && gpg glibc.sig && gpg --verify=glibc.sig glibc.tar.xz
+RUN gpg --keyserver hkps://hkps.pool.sks-keyservers.net --receive-keys $GLIBC_SIGKEY
+RUN gpg --verify glibc.sig glibc.tar.xz
 RUN tar --extract --xz --strip-components=1 --file=glibc.tar.xz && rm glibc.tar.xz
 
 # BUILD FINAL ARTIFACT @ /glibc-bin.tar.xz
