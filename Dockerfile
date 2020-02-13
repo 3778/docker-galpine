@@ -24,9 +24,8 @@ ARG GLIBC_VERSION=2.31
 ARG LANG=C.UTF-8
 ARG LC_ALL=C.UTF-8
 
-# TODO trim this up? AND ADD gpg TO THE LIST (if its not in by default already)
 RUN apt update && apt install -y --no-install-recommends --no-upgrade \
-    bison build-essential gawk gettext openssl python3 texinfo gpg dirmnrg
+    gpg gpg-agent dirmngr build-essential bison gawk python3
 
 ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz     glibc.tar.xz
 ADD https://ftp.gnu.org/gnu/glibc/glibc-$GLIBC_VERSION.tar.xz.sig glibc.sig
