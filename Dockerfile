@@ -18,7 +18,7 @@
 
 FROM alpine:3.11
 ARG VERSION=0.1.0
-ARG APK_URL=https://github.com/3778/docker-galpine/releases/$VERSION
+ARG APK_URL=https://github.com/3778/docker-galpine/releases/download/$VERSION
 ARG LANG=C.UTF-8
 ARG LC_ALL=C.UTF-8
 ENV LANG=$LANG LC_ALL=$LC_ALL

@@ -1,5 +1,5 @@
 VERSION := latest
-APK_URL := https://github.com/3778/docker-galpine/releases/$(VERSION)
+APK_URL := https://github.com/3778/docker-galpine/releases/download/$(VERSION)
 
 
 .PHONY: all
