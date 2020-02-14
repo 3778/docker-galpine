@@ -2,14 +2,14 @@
 #
 # Copyright 2020; 3778 Care <platform@3778.care>
 #
-# Permission to use, copy, modify, and/or distribute this software 
+# Permission to use, copy, modify, and/or distribute this software
 # for any purpose with or without fee is hereby granted, provided
 # that the above copyright notice and this permission notice
 # appear in all copies.
 #
 # THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
 # WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE 
+# WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
 # AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
 # CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
 # LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
@@ -51,8 +51,11 @@ FROM alpine:3.11 AS builder-apk
 RUN apk add alpine-sdk
 RUN adduser -D builder -G abuild
 RUN echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+RUN mkdir /packages && chown builder:abuild /packages
+
 USER builder
-WORKDIR /home/builder
+RUN mkdir -p /home/builder/glibc/src
+WORKDIR /home/builder/glibc/src
 
 # CONFIGURE APK BUILD ENVIRONMENT
 COPY APKBUILD .
@@ -68,16 +71,16 @@ RUN abuild checksum
 
 # BUILD PACKAGE (NOTE signed with build-time ephemeral key)
 ARG GLIBC_VERSION=2.31
-RUN abuild-keygen -ain && abuild -r
+RUN abuild-keygen -ain && abuild -r -P /packages
 
 
 FROM alpine:3.11
 ARG GLIBC_VERSION=2.31
 # TODO check if we need all `*.apk` files or just `glibc-bin-*.apk` or naked `glibc.apk`
 # TODO apk uses `home/x86_64` as repository index, we should remove the `home` part
-COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-$GLIBC_VERSION-r0.apk /opt/glibc.apk
-COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-bin-*.apk             /opt/glibc-bin.apk
-COPY --from=builder-apk /home/builder/packages/home/x86_64/glibc-i18n-*.apk            /opt/glibc-i18n.apk
+COPY --from=builder-apk /packages/glibc/x86_64/glibc-$GLIBC_VERSION-r0.apk /opt/glibc.apk
+COPY --from=builder-apk /packages/glibc/x86_64/glibc-bin-*.apk             /opt/glibc-bin.apk
+COPY --from=builder-apk /packages/glibc/x86_64/glibc-i18n-*.apk            /opt/glibc-i18n.apk
 RUN apk add --allow-untrusted --no-cache /opt/glibc.apk /opt/glibc-bin.apk /opt/glibc-i18n.apk
 
 # GENERATE LOCALES
