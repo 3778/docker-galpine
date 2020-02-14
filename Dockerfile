@@ -57,12 +57,10 @@ WORKDIR /home/builder
 # CONFIGURE APK BUILD ENVIRONMENT
 COPY APKBUILD .
 COPY --from=builder-glibc /glibc-bin.tar.xz .
-# TODO check what we are changing from default ld.so.conf and if we really need this
 RUN echo /usr/local/lib >  ld.so.conf && \
     echo /usr/glibc/lib >> ld.so.conf && \
     echo /usr/lib       >> ld.so.conf && \
     echo /lib           >> ld.so.conf
-# TODO what is this for? do we need this?
 RUN echo '#!/bin/sh'               >  glibc-bin.trigger && \
     echo  /usr/glibc/sbin/ldconfig >> glibc-bin.trigger && \
     chmod 775 glibc-bin.trigger
