@@ -51,7 +51,7 @@ FROM alpine:3.11 AS builder-apk
 RUN apk add alpine-sdk
 RUN adduser -D builder -G abuild
 RUN echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-RUN mkdir /packages && chown builder:abuild /packages
+RUN mkdir /packages && chown builder:abuild /packages /opt
 
 USER builder
 RUN mkdir -p /home/builder/glibc/src
@@ -73,22 +73,8 @@ RUN abuild checksum
 ARG GLIBC_VERSION=2.31
 RUN abuild-keygen -ain && abuild -r -P /packages
 
-
-FROM alpine:3.11
-ARG GLIBC_VERSION=2.31
 # TODO check if we need all `*.apk` files or just `glibc-bin-*.apk` or naked `glibc.apk`
 # TODO apk uses `home/x86_64` as repository index, we should remove the `home` part
-COPY --from=builder-apk /packages/glibc/x86_64/glibc-$GLIBC_VERSION-r0.apk /opt/glibc.apk
-COPY --from=builder-apk /packages/glibc/x86_64/glibc-bin-*.apk             /opt/glibc-bin.apk
-COPY --from=builder-apk /packages/glibc/x86_64/glibc-i18n-*.apk            /opt/glibc-i18n.apk
-RUN apk add --allow-untrusted --no-cache /opt/glibc.apk /opt/glibc-bin.apk /opt/glibc-i18n.apk
-
-# GENERATE LOCALES
-ARG LANG=C.UTF-8
-ARG LC_ALL=C.UTF-8
-ENV LANG=$LANG LC_ALL=$LC_ALL
-# TODO can we parametrize UTF-8 with build ARG? can we run `localedef` in a previous build step?
-RUN /usr/glibc/bin/localedef --force --inputfile POSIX --charmap UTF-8 $LC_ALL || true
-
-# GARBAGE COLLECTOR
-RUN apk del glibc-i18n && rm /opt/*.apk
+RUN cp /packages/glibc/x86_64/glibc-$GLIBC_VERSION-r0.apk /opt/glibc.apk
+RUN cp /packages/glibc/x86_64/glibc-bin-*.apk             /opt/glibc-bin.apk
+RUN cp /packages/glibc/x86_64/glibc-i18n-*.apk            /opt/glibc-i18n.apk
