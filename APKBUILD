@@ -24,14 +24,13 @@ url="https://github.com/3778/docker-galpine"
 arch="x86_64"
 license="LGPL"
 subpackages="$pkgname-dev $pkgname-bin $pkgname-i18n"
-source="glibc-bin.tar.xz nsswitch.conf ld.so.conf"
+source="glibc-bin.tar.xz ld.so.conf"
 triggers="$pkgname-bin.trigger=/lib:/usr/lib:/usr/glibc/lib"
 
 package() {
     mkdir -p $pkgdir/lib $pkgdir/lib64 $pkgdir/usr/glibc/lib/locale $pkgdir/usr/glibc/lib64 $pkgdir/etc
     cp -a $srcdir/usr $pkgdir
     cp $srcdir/ld.so.conf $pkgdir/usr/glibc/etc/ld.so.conf
-    cp $srcdir/nsswitch.conf $pkgdir/etc/nsswitch.conf
     rm $pkgdir/usr/glibc/etc/rpc
     rm -rf $pkgdir/usr/glibc/bin
     rm -rf $pkgdir/usr/glibc/sbin
